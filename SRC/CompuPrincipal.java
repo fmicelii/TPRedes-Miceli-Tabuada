@@ -1,70 +1,21 @@
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 
 public class CompuPrincipal {
     private String ip;
     private int puerto;
-    private String ipVecinoIzq;
-    private int puertoVecinoIzq;
-    private String ipVecinoDer;
-    private int puertoVecinoDer;
+    private String ipIzq;
+    private int puertoIzq;
+    private String ipDer;
+    private int puertoDer;
 
-    public CompuPrincipal(String ip, int puerto, String ipVecinoIzq, int puertoVecinoIzq, String ipVecinoDer, int puertoVecinoDer) {
+    public CompuPrincipal(String ip, int puerto, String ipIzq, int puertoIzq, String ipDer, int puertoDer) {
         this.ip = ip;
         this.puerto = puerto;
-        this.ipVecinoIzq = ipVecinoIzq;
-        this.puertoVecinoIzq = puertoVecinoIzq;
-        this.ipVecinoDer = ipVecinoDer;
-        this.puertoVecinoDer = puertoVecinoDer;
-    }
-
-    public void enviarMensaje(String destinoIp, int destinoPuerto, String msg) throws IOException {
-        // Formato: destinoIp:destinoPuerto|mensaje
-        String mensajeCompleto = destinoIp + ":" + destinoPuerto + "|" + "" + "#" + msg;
-        // Como origen siempre enviamos al vecino derecho si iniciamos
-        if (ipVecinoDer != null) {
-            reenviarMensaje(mensajeCompleto, ipVecinoDer, puertoVecinoDer);
-        } else if (ipVecinoIzq != null) {
-            reenviarMensaje(mensajeCompleto, ipVecinoIzq, puertoVecinoIzq);
-        }
-    }
-
-    public void procesarMensaje(String data) throws IOException {
-        String[] partes = data.split("\\|", 2);
-        String[] destino = partes[0].split(":");
-        String destinoIp = destino[0];
-        int destinoPuerto = Integer.parseInt(destino[1]);
-
-        // El segundo campo lo tratamos como "traza#mensaje"
-        String[] resto = partes[1].split("#", 2);
-        String traza = resto[0];
-        String mensaje = resto.length > 1 ? resto[1] : resto[0];
-
-        // Agregar esta compu a la traza
-        if (!traza.isEmpty()) {
-            traza += " -> ";
-        }
-        traza += "Compu" + (puerto - 4999); // Asume que 5000=Compu1, 5001=Compu2, etc.
-
-        if (destinoIp.equals(this.ip) && destinoPuerto == this.puerto) {
-            System.out.println("Recorrido: " + traza);
-            System.out.println("Mensaje recibido: " + mensaje);
-        } else {
-            String nuevoData = partes[0] + "|" + traza + "#" + mensaje;
-            if (destinoPuerto > this.puerto && ipVecinoDer != null) {
-                reenviarMensaje(nuevoData, ipVecinoDer, puertoVecinoDer);
-            } else if (ipVecinoIzq != null) {
-                reenviarMensaje(nuevoData, ipVecinoIzq, puertoVecinoIzq);
-            }
-        }
-    }
-
-    private void reenviarMensaje(String data, String ipDestino, int puertoDestino) throws IOException {
-        DatagramSocket ds = new DatagramSocket();
-        InetAddress ipReenvio = InetAddress.getByName(ipDestino);
-        DatagramPacket dp = new DatagramPacket(data.getBytes(), data.length(), ipReenvio, puertoDestino);
-        ds.send(dp);
-        ds.close();
+        this.ipIzq = ipIzq;
+        this.puertoIzq = puertoIzq;
+        this.ipDer = ipDer;
+        this.puertoDer = puertoDer;
     }
 
     public int getPuerto() {
@@ -73,5 +24,68 @@ public class CompuPrincipal {
 
     public String getIp() {
         return ip;
+    }
+
+    public void enviarMensaje(String ipDestino, int puertoDestino, String mensaje) {
+        try {
+            // Si el destino soy yo
+            if (ip.equals(ipDestino) && puerto == puertoDestino) {
+                System.out.println("Soy el destino " + ip + ":" + puerto + " -> Mensaje recibido: " + mensaje);
+                return;
+            }
+
+            // Decidir hacia dónde reenviar
+            if (puertoDestino < puerto && ipIzq != null) {
+                reenviar(ipIzq, puertoIzq, ipDestino, puertoDestino, mensaje);
+            } else if (puertoDestino > puerto && ipDer != null) {
+                reenviar(ipDer, puertoDer, ipDestino, puertoDestino, mensaje);
+            } else {
+                System.out.println("No existe la computadora con IP " + ipDestino + " y puerto " + puertoDestino);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void reenviar(String ipVecino, int puertoVecino, String ipDestino, int puertoDestino, String mensaje) {
+        try {
+            Socket socket = new Socket(ipVecino, puertoVecino);
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            out.println(ipDestino);
+            out.println(puertoDestino);
+            out.println(mensaje);
+            out.println(ip + ":" + puerto); // para mostrar el recorrido
+            socket.close();
+
+            System.out.println("[" + ip + ":" + puerto + "] -> [" + ipVecino + ":" + puertoVecino + "]: reenviando...");
+        } catch (Exception e) {
+            System.out.println("Error reenviando a " + ipVecino + ":" + puertoVecino);
+        }
+    }
+
+    public void escuchar() {
+        try (ServerSocket serverSocket = new ServerSocket(puerto)) {
+            while (true) {
+                Socket socket = serverSocket.accept();
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                String ipDestino = in.readLine();
+                int puertoDestino = Integer.parseInt(in.readLine());
+                String mensaje = in.readLine();
+                String recorrido = in.readLine();
+
+                System.out.println("Mensaje recibido en " + ip + ":" + puerto + " (recorrido hasta ahora: " + recorrido + ")");
+
+                if (ip.equals(ipDestino) && puerto == puertoDestino) {
+                    System.out.println("Llego a " + ip + ":" + puerto + " -> " + mensaje);
+                } else {
+                    // reenviar
+                    enviarMensaje(ipDestino, puertoDestino, mensaje);
+                }
+                socket.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

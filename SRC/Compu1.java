@@ -9,12 +9,31 @@ public class Compu1 {
         while (true) {
             System.out.println("Destino IP:");
             String ipDestino = sc.nextLine();
+
+            // Si escriben "salir" en vez de la IP, termina el programa
+            if (ipDestino.equalsIgnoreCase("salir")) {
+                System.out.println("Saliendo del programa...");
+                break; // sale del while
+            }
+
             System.out.println("Destino Puerto:");
-            int puertoDestino = Integer.parseInt(sc.nextLine());
-            System.out.println("Mensaje:");
+            String puertoInput = sc.nextLine();
+            if (puertoInput.equalsIgnoreCase("salir")) {
+                System.out.println("Saliendo del programa...");
+                break;
+            }
+            int puertoDestino = Integer.parseInt(puertoInput);
+
+            System.out.println("Mensaje (escribe 'salir' para terminar):");
             String mensaje = sc.nextLine();
+            if (mensaje.equalsIgnoreCase("salir")) {
+                System.out.println("Saliendo del programa...");
+                break;
+            }
 
             pc.enviarMensaje(ipDestino, puertoDestino, mensaje);
         }
+        sc.close(); // cerrar el scanner
+        System.exit(0); // termina el programa y mata los threads
     }
 }
