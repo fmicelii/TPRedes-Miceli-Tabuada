@@ -9,10 +9,25 @@ public class Compu4 {
         while (true) {
             System.out.println("Destino IP:");
             String ipDestino = sc.nextLine();
+            if (ipDestino.equalsIgnoreCase("salir")) {
+                System.out.println("Saliendo del programa...");
+                break;
+            }
+
             System.out.println("Destino Puerto:");
-            int puertoDestino = Integer.parseInt(sc.nextLine());
-            System.out.println("Mensaje:");
+            String puertoInput = sc.nextLine();
+            if (puertoInput.equalsIgnoreCase("salir")) {
+                System.out.println("Saliendo del programa...");
+                break;
+            }
+            int puertoDestino = Integer.parseInt(puertoInput);
+
+            System.out.println("Mensaje (escribe 'salir' para terminar):");
             String mensaje = sc.nextLine();
+            if (mensaje.equalsIgnoreCase("salir")) {
+                System.out.println("Saliendo del programa...");
+                break;
+            }
 
             pc.enviarMensaje(ipDestino, puertoDestino, mensaje);
         }
